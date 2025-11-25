@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Ensure NodeJS is installed and set the path correctly
-        NODE_HOME = tool name: 'NodeJS', type: 'NodeJSInstallation'  // This name should match the NodeJS installation in Jenkins
+        NODE_HOME = tool name: 'NodeJS', type: 'NodeJSInstallation'  // This name should match the name in Global Tool Configuration
         PATH = "${NODE_HOME}/bin:${env.PATH}"
     }
 

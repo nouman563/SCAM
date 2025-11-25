@@ -1,82 +1,64 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    NODE_HOME = tool name: 'NodeJS', type: 'NodeJSInstallation'
-    PATH = "${NODE_HOME}/bin:${env.PATH}"
-  }
+    environment {
+        // Ensure NodeJS is installed and set the path correctly
+        NODE_HOME = tool name: 'NodeJS', type: 'NodeJSInstallation'  // This name should match the NodeJS installation in Jenkins
+        PATH = "${NODE_HOME}/bin:${env.PATH}"
+    }
 
-  stages {
-    stage('Checkout') {
-      steps {
-        script {
-          // Checkout code from SCM
-          checkout scm
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
         }
-      }
-    }
-    
-    stage('Update Dependencies') {
-      steps {
-        script {
-          // Ensure the correct version of dependencies is installed
-          sh 'npm install -g npm@latest'  // Update npm to the latest version
-          sh 'npm install'                // Install dependencies (update package-lock.json if needed)
+
+        stage('Install NodeJS') {
+            steps {
+                script {
+                    // Check if NodeJS is already installed
+                    sh 'node --version'
+                    sh 'npm --version'
+                }
+            }
         }
-      }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    // Install dependencies using npm
+                    sh 'npm install'  // You can replace with npm ci if you have a package-lock.json file
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                script {
+                    // Run tests, allowing them to fail but not block the pipeline
+                    sh 'npm test || true'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build Docker image
+                    sh 'docker build -t smart-attendance:latest .'
+                }
+            }
+        }
     }
 
-    stage('Install') {
-      steps {
-        script {
-          // Install dependencies using npm ci
-          try {
-            sh 'npm ci'  // Clean install dependencies from package-lock.json
-          } catch (Exception e) {
-            currentBuild.result = 'FAILURE'
-            echo "npm ci failed: ${e}"
-            throw e
-          }
+    post {
+        success {
+            echo 'Build succeeded!'
         }
-      }
-    }
-
-    stage('Test') {
-      steps {
-        script {
-          // Run tests, ignore failure if it's a non-blocking test
-          try {
-            sh 'npm test || true'  // Ensure tests run but don't fail the build if they do
-          } catch (Exception e) {
-            echo "Tests failed, but continuing the pipeline"
-          }
+        failure {
+            echo 'Build failed!'
+            // Optional: Add email, Slack, or other notification here
         }
-      }
     }
-
-    stage('Build Docker') {
-      steps {
-        script {
-          try {
-            // Build Docker image
-            sh 'docker build -t smart-attendance:latest .'
-          } catch (Exception e) {
-            currentBuild.result = 'FAILURE'
-            echo "Docker build failed: ${e}"
-            throw e
-          }
-        }
-      }
-    }
-  }
-
-  post {
-    success {
-      echo 'Build succeeded!'
-    }
-    failure {
-      echo 'Build failed!'
-      // You can add further notification here like sending emails or Slack messages.
-    }
-  }
 }
